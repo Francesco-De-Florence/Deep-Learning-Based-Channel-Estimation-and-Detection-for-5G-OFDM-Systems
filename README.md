@@ -1,302 +1,178 @@
-# Deep-Learning-Based-Channel-Estimation-and-Detection-for-5G-OFDM-Systems
+# Deep Learning-Based Channel Estimation for 5G OFDM Systems
+
 ## Overview
+This project implements deep learning-based channel estimation for 5G Orthogonal Frequency Division Multiplexing (OFDM) systems operating over multipath Rayleigh fading channels. The study compares traditional pilot-based estimators with modern neural network approaches to improve channel estimation accuracy and communication reliability.
 
-This repository implements **deep learning-based channel estimation for 5G OFDM systems** operating over **multipath Rayleigh fading channels**. The project compares traditional pilot-based channel estimation techniques with modern deep learning models.
+Two neural network architectures are investigated:
 
-Conventional estimators such as **Least Squares (LS)** and **Minimum Mean Square Error (MMSE)** often suffer from degraded performance in noisy and time-varying wireless channels. To address this limitation, this project proposes two neural network-based estimators:
+- Residual Convolutional Neural Network (CNN)
+- Bidirectional Long Short-Term Memory (BiLSTM)
 
-* Residual **Convolutional Neural Network (CNN)**
-* **Bidirectional Long Short-Term Memory (BiLSTM)** network
+Both models refine a noisy Least Squares (LS) channel estimate and aim to approach the performance of perfect Channel State Information (CSI).
 
-Both models refine the noisy LS channel estimate and improve estimation accuracy across all OFDM subcarriers.
-
-The complete system is implemented in **Python using PyTorch** and simulates an **end-to-end OFDM communication pipeline**.
-
----
+## Key Features
+- End-to-end OFDM simulation framework
+- QPSK modulation and pilot-assisted transmission
+- Multipath Rayleigh fading channel model
+- Additive White Gaussian Noise (AWGN)
+- Comparison of classical and deep learning channel estimators
+- Performance evaluation using Mean Square Error (MSE) and Bit Error Rate (BER)
+- Ablation analysis for pilot density and cyclic prefix length
 
 ## System Architecture
 
-The implemented communication system follows a standard **5G-inspired OFDM physical layer**.
+The implemented communication pipeline consists of the following components:
 
-```
-Bit Stream
-   │
-   ▼
-QPSK Modulator
-   │
-   ▼
-Pilot Insertion
-   │
-   ▼
-IFFT (OFDM Modulation)
-   │
-   ▼
-Cyclic Prefix Addition
-   │
-   ▼
-Multipath Rayleigh Channel + AWGN
-   │
-   ▼
-CP Removal + FFT
-   │
-   ▼
-Channel Estimator
-(LS / MMSE / CNN / BiLSTM)
-   │
-   ▼
-Zero-Forcing Equalizer
-   │
-   ▼
-QPSK Demodulator
-   │
-   ▼
-Recovered Bits
-```
+1. OFDM Transmitter
+2. Pilot insertion and QPSK mapping
+3. IFFT modulation and cyclic prefix addition
+4. Multipath Rayleigh fading channel
+5. AWGN noise addition
+6. OFDM receiver (CP removal and FFT)
+7. Channel estimation
+8. Zero-Forcing (ZF) equalization
+9. QPSK demodulation and bit recovery
 
----
+## OFDM System Parameters
 
-## Key Features
+| Parameter | Value |
+|----------|------|
+| FFT size | 64 |
+| Cyclic Prefix Length | 16 |
+| Pilot Subcarriers | 8 |
+| Data Subcarriers | 48 |
+| Guard Subcarriers | 8 |
+| Modulation | QPSK |
+| Channel Model | Rayleigh Fading |
+| Noise Model | AWGN |
+| SNR Range | 0–30 dB |
 
-* Complete **5G OFDM simulation framework**
-* Support for **traditional and deep learning estimators**
-* Implementation using **PyTorch**
-* Evaluation using **BER and MSE performance metrics**
-* Ablation studies on:
+## Channel Estimation Methods
 
-  * Pilot density
-  * Cyclic prefix length
-* Comparison with **perfect CSI performance bound**
+### Least Squares (LS)
+The LS estimator computes the channel estimate at pilot subcarriers by
 
----
+Ĥ = Y / X
 
-## Implemented Channel Estimators
+where Y is the received pilot symbol and X is the transmitted pilot symbol.  
+Although computationally simple, LS amplifies noise and performs poorly at low SNR.
 
-### 1. Least Squares (LS)
+### Minimum Mean Square Error (MMSE)
+MMSE improves LS by incorporating channel statistics and noise variance.  
+It achieves lower estimation error but requires prior knowledge of channel correlation and SNR.
 
-Simple pilot-based estimator:
+### CNN-Based Channel Estimator
+The CNN model processes the LS estimate using a residual encoder-decoder architecture.
 
-[
-\hat{H}_{LS}(k) = \frac{Y_k}{X_k}
-]
+Architecture characteristics:
+- 1D convolutional layers
+- Batch normalization and ReLU activations
+- Residual learning to refine LS estimate
+- Approximately 270K trainable parameters
 
-Advantages:
+The CNN learns to remove noise from the LS estimate while preserving channel structure.
 
-* Very low complexity
-
-Limitations:
-
-* Sensitive to noise
-* Poor performance at low SNR
-
----
-
-### 2. Minimum Mean Square Error (MMSE)
-
-Uses channel correlation information to improve estimation:
-
-[
-\hat{H}*{MMSE} = R*{hh}(R_{hh} + \frac{\sigma_w^2}{\sigma_x^2}I)^{-1} \hat{H}_{LS}
-]
-
-Advantages:
-
-* Better accuracy than LS
-
-Limitations:
-
-* Requires prior channel statistics
-* Higher computational cost
-
----
-
-### 3. Residual CNN Channel Estimator
-
-A **deep convolutional neural network** designed to refine the LS estimate.
-
-Architecture highlights:
-
-* Encoder–decoder structure
-* 1D convolution layers
-* Batch normalization
-* Residual connection
-
-Residual formulation:
-
-[
-\hat{H}*{CNN} = f*\theta(Z) + g_\phi(Z)
-]
-
-Where
-
-* (Z = [Re(\hat{H}*{LS}), Im(\hat{H}*{LS})])
+### BiLSTM-Based Channel Estimator
+The BiLSTM treats the channel frequency response as a sequence across subcarriers.
 
 Key properties:
+- Three stacked bidirectional LSTM layers
+- Hidden size of 128 units
+- Fully connected regression head
+- Approximately 1.02M parameters
 
-* Learns **noise suppression**
-* Exploits **frequency correlation between subcarriers**
-* Fast convergence during training
-
----
-
-### 4. Bidirectional LSTM Channel Estimator
-
-Treats the **channel frequency response as a sequential signal** across subcarriers.
-
-Processing steps:
-
-1. Input LS estimate
-2. Pass through stacked BiLSTM layers
-3. Fully connected regression head outputs CFR
-
-Advantages:
-
-* Captures **long-range subcarrier dependencies**
-* Bidirectional processing improves context awareness
-
----
-
-## Simulation Parameters
-
-| Parameter         | Value           |
-| ----------------- | --------------- |
-| FFT Size          | 64              |
-| Cyclic Prefix     | 16              |
-| Pilot Subcarriers | 8               |
-| Data Subcarriers  | 48              |
-| Guard Subcarriers | 8               |
-| Channel Model     | Rayleigh Fading |
-| Noise Model       | AWGN            |
-| Modulation        | QPSK            |
-| Channel Taps      | 6               |
-| Training Samples  | 50,000          |
-| Test Samples      | 5,000           |
-| Optimizer         | AdamW           |
-| Epochs            | 60              |
-
----
+Bidirectional processing allows the network to capture long-range correlations across subcarriers.
 
 ## Dataset Generation
 
-Training data is generated using **Monte Carlo simulation**.
+Training data is generated using Monte Carlo simulation.
 
-For each sample:
+Dataset generation steps:
+1. Random SNR is sampled between 0 and 30 dB
+2. A new multipath Rayleigh channel is generated
+3. Random QPSK symbols are transmitted
+4. LS channel estimate is computed
+5. True channel response is stored as the ground truth
 
-1. Random SNR is drawn from **0–30 dB**
-2. A new **Rayleigh fading channel** is generated
-3. OFDM symbol is transmitted through the channel
-4. **LS estimate** is computed
-5. **True channel response** is stored as ground truth
+Dataset statistics:
 
-Dataset split:
+| Dataset | Samples |
+|-------|--------|
+| Training Set | 50,000 |
+| Test Set | 5,000 |
 
-* Training: **50,000 samples**
-* Testing: **5,000 samples**
+Each sample consists of
 
----
+Input: LS channel estimate  
+Target: True channel frequency response
 
-## Performance Results
+## Training Configuration
 
-### MSE Comparison
+| Parameter | Value |
+|----------|------|
+| Optimizer | AdamW |
+| Learning Rate | 1e-3 |
+| Weight Decay | 1e-4 |
+| Batch Size | 256 |
+| Training Epochs | 60 |
+| LR Schedule | Cosine Annealing |
 
-| SNR (dB) | LS     | MMSE   | CNN    | BiLSTM |
-| -------- | ------ | ------ | ------ | ------ |
-| 0        | 0.18   | 0.09   | 0.04   | 0.03   |
-| 10       | 0.062  | 0.029  | 0.012  | 0.009  |
-| 20       | 0.020  | 0.009  | 0.0036 | 0.0027 |
-| 30       | 0.0068 | 0.0029 | 0.0011 | 0.0008 |
+## Performance Evaluation
 
-Key observations:
+The estimators are evaluated using:
 
-* CNN reduces MSE by **≈60% compared to LS**
-* CNN improves **≈35% over MMSE**
-* BiLSTM achieves slightly lower MSE at **high SNR**
+- Mean Square Error (MSE)
+- Bit Error Rate (BER)
 
----
+### Main Observations
 
-### BER Performance
+- CNN reduces MSE by approximately **60% compared to LS** at 20 dB SNR
+- CNN reduces MSE by approximately **35% compared to MMSE**
+- BiLSTM slightly outperforms CNN at high SNR
+- Deep learning estimators remain robust even with fewer pilot symbols
+- Optimal cyclic prefix length must be at least equal to the maximum channel delay
 
-Deep learning estimators significantly improve BER:
+### BER Improvement
 
-* MMSE achieves **~1.5 dB gain over LS**
-* CNN provides **~2 dB gain over MMSE**
-* Performance approaches **perfect CSI bound**
+Deep learning estimators achieve approximately **2 dB SNR gain** over MMSE at BER = 10⁻².
 
----
+## Experimental Environment
 
-## Robustness Analysis
+Experiments were conducted using:
 
-### Impact of Pilot Density
-
-Deep learning estimators remain robust even with fewer pilots.
-
-| Pilots | LS MSE | CNN MSE |
-| ------ | ------ | ------- |
-| 4      | 0.071  | 0.014   |
-| 8      | 0.035  | 0.0067  |
-| 16     | 0.017  | 0.0027  |
-
-This enables **higher spectral efficiency**.
-
----
-
-### Impact of Cyclic Prefix Length
-
-When CP is shorter than channel delay spread:
-
-* Inter-symbol interference appears
-* Estimation performance degrades
-
-Optimal CP length:
-
-```
-Ncp ≥ Maximum channel delay
-```
-
----
-
-## Training Details
-
-Training setup:
-
-* Framework: **PyTorch 2.x**
-* GPU: **NVIDIA T4 (Google Colab)**
-* Batch size: **256**
-* Learning rate: **1e-3**
-* Scheduler: **Cosine Annealing**
-* Gradient clipping applied for LSTM
+- Python 3.10
+- PyTorch 2.x
+- NVIDIA T4 GPU
+- Google Colaboratory
 
 Training time:
+- CNN: ~12 minutes
+- BiLSTM: ~25 minutes
 
-* CNN: ~12 minutes
-* BiLSTM: ~25 minutes
+## Results Summary
 
----
-
-## Key Contributions
-
-This project demonstrates:
-
-* Deep learning can **significantly improve OFDM channel estimation**
-* CNN and BiLSTM models outperform **LS and MMSE**
-* Neural networks are **robust to pilot sparsity**
-* Performance approaches **perfect CSI bound**
-
----
+| SNR (dB) | LS MSE | MMSE MSE | CNN MSE | BiLSTM MSE |
+|---------|--------|----------|---------|------------|
+| 10 | 6.21e-2 | 2.93e-2 | 1.24e-2 | 9.33e-3 |
+| 15 | 3.57e-2 | 1.65e-2 | 6.73e-3 | 5.05e-3 |
+| 20 | 2.06e-2 | 9.30e-3 | 3.65e-3 | 2.74e-3 |
 
 ## Future Work
 
-Possible extensions include:
+Potential research extensions include:
 
-* Transformer-based channel estimators
-* Time-varying channel estimation
-* Massive MIMO OFDM systems
-* Model compression for real-time deployment
-* Online learning for adaptive wireless channels
-
----
+- Time-varying channel estimation with Doppler effects
+- Transformer-based channel estimation architectures
+- Online meta-learning for adaptive wireless environments
+- Model compression for embedded 5G deployment
+- Extension to massive MIMO-OFDM systems
 
 ## References
 
-1. Dahlman, E., Parkvall, S., Sköld, J. *5G NR: The Next Generation Wireless Access Technology.*
-2. Edfors, O. et al. *OFDM Channel Estimation by Singular Value Decomposition.*
-3. Ye, H., Li, G. Y. *Deep Learning for Channel Estimation in OFDM Systems.*
+Key references for this work include:
+
+- Dahlman et al., *5G NR: The Next Generation Wireless Access Technology*
+- Ye et al., Deep learning for channel estimation in OFDM systems
+- Soltani et al., Deep learning-based channel estimation
+- Li et al., ReEsNet residual network for OFDM channel estimation
+- Goodfellow et al., *Deep Learning*
